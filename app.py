@@ -1,9 +1,22 @@
 from flask import Flask, request, jsonify
 from flask_sqlalchemy import SQLAlchemy
+import os
+from flask_migrate import Migrate
 
 app = Flask(__name__)
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///mensagens.db'
-db = SQLAlchemy(app)
+
+db = SQLAlchemy()
+
+# Configuração do banco de dados
+basedir = os.path.abspath(os.path.dirname(__file__))
+
+#Caminho do banco de dados dentro do repositório
+app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{os.path.join(basedir, "mensagens.db")}'
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+# Inicializa o banco de dados e o Flask-Migrate
+db.init_app(app)  # Inicializa o SQLAlchemy com a aplicação Flask
+migrate = Migrate(app, db)
 
 class Mensagem(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -11,10 +24,6 @@ class Mensagem(db.Model):
 
     def to_dict(self):
         return {"id": self.id, "conteudo": self.conteudo}
-
-# Criando o banco de dados
-with app.app_context():
-    db.create_all()
 
 @app.route("/mensagens", methods=["POST"])
 def criar_mensagem():
@@ -49,5 +58,8 @@ def deletar_mensagem(id):
     db.session.commit()
     return jsonify({"mensagem": "Mensagem deletada com sucesso."})
 
-if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000)
+# Execução do aplicativo
+if __name__ == '__main__':
+    with app.app_context():
+        db.create_all()  # Cria as tabelas no banco de dados, se não existirem
+    app.run(debug=True)
